@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "compiledAt": 1787904642571,
+  "articles": 100,
+  "categories": 37,
+  "sections": 705,
+  "tags": 176,
+  "relations": 212,
+  "images": 0,
+  "databaseSizeBytes": 1388544,
+  "databaseSizeFormatted": "1356.00 KB",
+  "ftsEnabled": true
+}

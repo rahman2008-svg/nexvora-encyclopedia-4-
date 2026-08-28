@@ -1,0 +1,57 @@
+name: NexVora Content Validation & Build Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Validate Markdown Content & Generate Encyclopedia Database
+        run: |
+          python3 scripts/validate_content.py
+          python3 scripts/generate_encyclopedia_db.py
+
+      - name: Verify SQLite Integrity & FTS Coverage
+        run: |
+          python3 -c "
+          import sqlite3
+          conn = sqlite3.connect('app/src/main/assets/encyclopedia.db')
+          c = conn.cursor()
+          c.execute('PRAGMA integrity_check')
+          assert c.fetchone()[0] == 'ok', 'Integrity check failed'
+          c.execute('SELECT COUNT(*) FROM articles')
+          art_count = c.fetchone()[0]
+          c.execute('SELECT COUNT(*) FROM articles_fts')
+          fts_count = c.fetchone()[0]
+          assert art_count > 0, 'No articles found'
+          assert art_count == fts_count, f'FTS count ({fts_count}) does not match articles count ({art_count})'
+          print(f'Verification passed: {art_count} articles, {fts_count} FTS entries.')
+          conn.close()
+          "
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew || true
+
+      - name: Run Android Unit & Robolectric Tests
+        run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Build Android App (Debug APK)
+        run: ./gradlew assembleDebug --no-daemon
